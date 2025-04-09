@@ -48,6 +48,7 @@ wire [3:0]es_val;
 wire carry= es_tot[4];
 assign es_val= es_tot[3:0];
 assign k=ka+kb+carry;
+reg man_start;
 integer i,j;
 always @(k)
 begin
@@ -60,7 +61,8 @@ if (k>0)
     product[30-k-3]=es_val[2];
     product[30-k-4]=es_val[1];
     product[30-k-5]=es_val[0];
-    for(j=30-k-6 ; j>=0; j=j-1) product[j]=man_final[31+j+k];
+    // for(j=30-k-6 ; j>=0; j=j-1) product[j]=man_final[31+j+k];
+    man_start = 30-k-6;
     end
 else 
     begin
@@ -71,10 +73,15 @@ else
     product[30+k-2]=es_val[2];
     product[30+k-3]=es_val[1];
     product[30+k-4]=es_val[0];
-    for(j=30+k-5 ; j>=0; j=j-1) product[j]=man_final[30+j-k];
+    // for(j=30+k-5 ; j>=0; j=j-1) product[j]=man_final[30+j-k];
+    man_start = 30+k-5;
     end
 end
-
+// need to add something to strip 1st character from mantissa, this would be the 0 or 1
+// strip leading zeroes from mantissa
+// truncate mantissa to fit in man_len
+// write mantissa to man_start till 0
+always @(
 
 endmodule
 
@@ -121,7 +128,6 @@ input [27:0] man_1, man_2;
 input man_len_1, man_len_2;
 output carry;
 output [55:0]man_final;
-
 wire m1[27:0] = {1,man_1};
 wire m2[27:0]= {1,man_2};
 wire man_temp[55:0] =m1*m2;
