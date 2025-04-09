@@ -57,10 +57,11 @@ if (k>0)
     for(i = 30;i>=30-k;i=i-1) product[i]=1;
     product[30-k-1]=0;
     product[31]=sign;
-    product[30-k-2]=es_val[3];
-    product[30-k-3]=es_val[2];
-    product[30-k-4]=es_val[1];
-    product[30-k-5]=es_val[0];
+    // product[30-k-2]=es_val[3];
+    // product[30-k-3]=es_val[2];
+    // product[30-k-4]=es_val[1];
+    // product[30-k-5]=es_val[0];
+    product[30-k-2:30-k-5]=es_val[3:0];
     // for(j=30-k-6 ; j>=0; j=j-1) product[j]=man_final[31+j+k];
     man_start = 30-k-6;
     end
@@ -69,10 +70,11 @@ else
     for(i = 30;i>30+k;i=i-1) product[i]=0;
     product[30+k]=0;
     product[31]=sign;
-    product[30+k-1]=es_val[3];
-    product[30+k-2]=es_val[2];
-    product[30+k-3]=es_val[1];
-    product[30+k-4]=es_val[0];
+    // product[30+k-1]=es_val[3];
+    // product[30+k-2]=es_val[2];
+    // product[30+k-3]=es_val[1];
+    // product[30+k-4]=es_val[0];
+    product[30+k-1:30+k-4]=es_val[3:0];
     // for(j=30+k-5 ; j>=0; j=j-1) product[j]=man_final[30+j-k];
     man_start = 30+k-5;
     end
