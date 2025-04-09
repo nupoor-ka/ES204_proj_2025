@@ -77,11 +77,26 @@ else
     man_start = 30+k-5;
     end
 end
+
+integer k,l;
+reg man_final_start;
+always @(man_final)
+    begin
+        for(k=53;k>=0;k=k-1)
+            begin
+                if(!man_final)
+                    begin
+                        man_final_start = k;
+                        break
+                    end
+            end
+        product[man_start:0] = man_final[man_final_start:(man_final_start-man_start)];
+    end
+
 // need to add something to strip 1st character from mantissa, this would be the 0 or 1
 // strip leading zeroes from mantissa
 // truncate mantissa to fit in man_len
 // write mantissa to man_start till 0
-always @(
 
 endmodule
 
