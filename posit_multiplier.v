@@ -80,15 +80,15 @@ else
     end
 end
 
-integer k,l;
+integer m,l;
 reg man_final_start;
 always @(man_final)
     begin
-        for(k=53;k>=0;k=k-1)
+        for(m=53;m>=0;m=m-1)
             begin
                 if(!man_final)
                     begin
-                        man_final_start = k;
+                        man_final_start = m;
                         break
                     end
             end
