@@ -1,28 +1,21 @@
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
+// Authors: Nupoor Assudani, Vyomika Vasireddy
 // 
 // Create Date: 07.04.2025 23:49:42
-// Design Name: 
+// Design Name: Posit Multiplier
 // Module Name: posit_multiplier
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
+// Project Name: Comparing Posit and IEEE 754 Floating Point Numbers
+// Target Devices: Basys 3 Xilinx
 // Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
+// Comparing computation cost and precision of final output for multiplication of posits and IEEE 754 floating point numbers
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module posit_multiplier(a,b,product);
+module posit_multiplier(a,b,product, error);
 input [31:0] a, b;
 output reg [31:0] product;
+output reg error;
 reg k_final;
 reg k_temp_1;
 //sign bit
@@ -52,54 +45,60 @@ reg man_start;
 integer i,j;
 always @(k)
 begin
-if (k>0)
-    begin
-    for(i = 30;i>=30-k;i=i-1) product[i]=1;
-    product[30-k-1]=0;
-    product[31]=sign;
-    // product[30-k-2]=es_val[3];
-    // product[30-k-3]=es_val[2];
-    // product[30-k-4]=es_val[1];
-    // product[30-k-5]=es_val[0];
-    product[30-k-2:30-k-5]=es_val[3:0];
-    // for(j=30-k-6 ; j>=0; j=j-1) product[j]=man_final[31+j+k];
-    man_start = 30-k-6;
-    end
-else 
-    begin
-    for(i = 30;i>30+k;i=i-1) product[i]=0;
-    product[30+k]=0;
-    product[31]=sign;
-    // product[30+k-1]=es_val[3];
-    // product[30+k-2]=es_val[2];
-    // product[30+k-3]=es_val[1];
-    // product[30+k-4]=es_val[0];
-    product[30+k-1:30+k-4]=es_val[3:0];
-    // for(j=30+k-5 ; j>=0; j=j-1) product[j]=man_final[30+j-k];
-    man_start = 30+k-5;
-    end
+    if ((k>25)|(k<-26))
+        begin
+        product = 32'bx; 
+        error = 1;
+        end
+    else
+        begin
+        error = 0;
+        if (k>0)
+            begin
+            for(i = 30;i>=30-k;i=i-1) product[i]=1;
+            product[30-k-1]=0;
+            product[31]=sign;
+            // product[30-k-2]=es_val[3];
+            // product[30-k-3]=es_val[2];
+            // product[30-k-4]=es_val[1];
+            // product[30-k-5]=es_val[0];
+            product[30-k-2:30-k-5]=es_val[3:0];
+            // for(j=30-k-6 ; j>=0; j=j-1) product[j]=man_final[31+j+k];
+            man_start = 30-k-6;
+            end
+        else 
+            begin
+            for(i = 30;i>30+k;i=i-1) product[i]=0;
+            product[30+k]=0;
+            product[31]=sign;
+            // product[30+k-1]=es_val[3];
+            // product[30+k-2]=es_val[2];
+            // product[30+k-3]=es_val[1];
+            // product[30+k-4]=es_val[0];
+            product[30+k-1:30+k-4]=es_val[3:0];
+            // for(j=30+k-5 ; j>=0; j=j-1) product[j]=man_final[30+j-k];
+            man_start = 30+k-5;
+            end
+        end
 end
 
 integer m,l;
 reg man_final_start;
 always @(man_final)
     begin
-        for(m=53;m>=0;m=m-1)
+        if(!error)
             begin
-                if(!man_final)
-                    begin
-                        man_final_start = m;
-                        break
-                    end
+            for(m=53;m>=0;m=m-1)
+                begin
+                    if(!man_final)
+                        begin
+                            man_final_start = m;
+                            break
+                        end
+                end
+            product[man_start:0] = man_final[man_final_start:(man_final_start-man_start)];
             end
-        product[man_start:0] = man_final[man_final_start:(man_final_start-man_start)];
     end
-
-// need to add something to strip 1st character from mantissa, this would be the 0 or 1
-// strip leading zeroes from mantissa
-// truncate mantissa to fit in man_len
-// write mantissa to man_start till 0
-
 endmodule
 
 module k_extractor(inp, k_val, len_regime);
@@ -152,5 +151,3 @@ wire overflow = ~(man_temp[55]);
 assign man_final = overflow ? (man_temp << 1'b1) : man_temp;
 assign carry= overflow;
 endmodule
-
-
