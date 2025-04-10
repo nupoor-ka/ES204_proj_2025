@@ -12,10 +12,10 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module posit_multiplier(a,b,product, error);
+module posit_multiplier(a, b, product, error, zero);
 input [31:0] a, b;
 output reg [31:0] product;
-output reg error;
+output reg error, zero;
 reg k_final;
 reg k_temp_1;
 //sign bit
@@ -49,6 +49,11 @@ begin
         begin
         product = 32'bx; 
         error = 1;
+        end
+    else if ((a==32'b0)|(b==32'b0))
+        begin
+        zero = 1;
+        product = 32'b0;
         end
     else
         begin
@@ -86,7 +91,7 @@ integer m,l;
 reg man_final_start;
 always @(man_final)
     begin
-        if(!error)
+        if((!error)&(!zero))
             begin
             for(m=53;m>=0;m=m-1)
                 begin
@@ -108,24 +113,33 @@ reg k_sign;
 reg k_position;
 always@(inp)
 begin
-if(inp[30])
+if (inp==32'b0)
     begin
-    for(i = 29;i>=4;i = i - 1)
-        begin
-        if(!inp[i]) k_position <= i;
-        end
-    k_val=30-k_position-1;
+    k_val = 0;
+    len_regime = 0;
     end
 else
     begin
-    for(i = 29;i>=4;i = i - 1)
+    if(inp[30])
         begin
-        if(inp[i]) k_position <= i;
+        for(i = 29;i>=4;i = i - 1)
+            begin
+            if(!inp[i]) k_position <= i;
+            end
+        k_val=30-k_position-1;
         end
-    k_val=(k_position-30);
+    else
+        begin
+        for(i = 29;i>=4;i = i - 1)
+            begin
+            if(inp[i]) k_position <= i;
+            end
+        k_val=(k_position-30);
+        end
     end
-len_regime=31-k_position;
 end
+len_regime=31-k_position;
+endmodule
 
 module mantissa_extractor(inp, man_length, es, man_val);
 input inp[31:0];
