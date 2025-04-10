@@ -63,11 +63,12 @@ begin
             for(i = 30;i>=30-k;i=i-1) product[i]=1;
             product[30-k-1]=0;
             product[31]=sign;
-            // product[30-k-2]=es_val[3];
-            // product[30-k-3]=es_val[2];
-            // product[30-k-4]=es_val[1];
-            // product[30-k-5]=es_val[0];
-            product[30-k-2:30-k-5]=es_val[3:0];
+//             product[30-k-2]=es_val[3];
+//             product[30-k-3]=es_val[2];
+//             product[30-k-4]=es_val[1];
+//             product[30-k-5]=es_val[0];
+             for(i = 2; i>=5; i=i+1) product[30-k-i] = es_val[5-i];
+            //product[30-k-2:30-k-5]=es_val[3:0];
             // for(j=30-k-6 ; j>=0; j=j-1) product[j]=man_final[31+j+k];
             man_start = 30-k-6;
             end
@@ -76,41 +77,77 @@ begin
             for(i = 30;i>30+k;i=i-1) product[i]=0;
             product[30+k]=0;
             product[31]=sign;
-            // product[30+k-1]=es_val[3];
-            // product[30+k-2]=es_val[2];
-            // product[30+k-3]=es_val[1];
-            // product[30+k-4]=es_val[0];
-            product[30+k-1:30+k-4]=es_val[3:0];
+//            product[30+k-1]=es_val[3];
+//            product[30+k-2]=es_val[2];
+//            product[30+k-3]=es_val[1];
+//            product[30+k-4]=es_val[0];
+            for(i = 1; i>=4; i=i+1) product[30+k-i] = es_val[4-i];
+            
+            //product[30+k-1:30+k-4]=es_val[3:0];
             // for(j=30+k-5 ; j>=0; j=j-1) product[j]=man_final[30+j-k];
             man_start = 30+k-5;
             end
         end
 end
 
-integer m,l;
-reg man_final_start;
+integer m,l,t;
+reg [5:0] man_final_start;
 always @(man_final)
     begin
         if((!error)&(!zero))
             begin
+            begin :search_loop
             for(m=53;m>=0;m=m-1)
                 begin
                     if(!man_final)
                         begin
                             man_final_start = m;
-                            break
+                            disable search_loop;
                         end
+                        
                 end
-            product[man_start:0] = man_final[man_final_start:(man_final_start-man_start)];
+            for (t=man_start; t>=0; t=t-1)
+            begin 
+            product[t] = man_final[man_final_start-man_start+t];
+            end
+            end
             end
     end
 endmodule
+
+
+module mantissa_multiplier(man_1, man_2, carry, man_final, man_len_1, man_len_2);
+input [26:0] man_1, man_2;
+input man_len_1, man_len_2;
+output carry;
+output [55:0]man_final;
+wire [27:0]m1 = {1'b1,man_1};
+wire [27:0]m2= {1'b1,man_2};
+wire [55:0]man_temp =m1*m2;
+wire overflow = ~(man_temp[55]);
+assign man_final = overflow ? (man_temp << 1'b1) : man_temp;
+assign carry= overflow;
+endmodule
+
+module mantissa_extractor(inp, man_length, es, man_val);
+input [31:0]inp;
+output reg man_length, man_val;
+output wire [3:0]es;
+reg len_regime, k_val;
+k_extractor k_extractor_1(inp, k_val, len_regime);
+wire es_start= 31-1- len_regime;
+wire [3:0]es=inp[es_start: es_start-3];
+wire man_length=32-1-len_regime-4;
+reg man_val=inp[es_start-4:0];
+endmodule
+
 
 module k_extractor(inp, k_val, len_regime);
 input [31:0]inp;
 output reg k_val, len_regime;
 reg k_sign;
 reg k_position;
+integer i;
 always@(inp)
 begin
 if (inp==32'b0)
@@ -136,32 +173,7 @@ else
             end
         k_val=(k_position-30);
         end
+    len_regime = 31 - k_position;
     end
 end
-len_regime=31-k_position;
-endmodule
-
-module mantissa_extractor(inp, man_length, es, man_val);
-input inp[31:0];
-output man_length, man_val;
-output reg es[3:0];
-reg len_regime, k_val;
-k_extractor k_extractor_1(inp, k_val, len_regime);
-reg es_start= 31-1- len_regime;
-assign es=inp[es_start: es_start-3];
-assign man_length=32-1-len_regime-4;
-assign man_val=inp[es_start-4:0];
-endmodule
-
-module mantissa_multiplier(man_1, man_2, carry, man_final, man_len_1, man_len_2);
-input [27:0] man_1, man_2;
-input man_len_1, man_len_2;
-output carry;
-output [55:0]man_final;
-wire m1[27:0] = {1,man_1};
-wire m2[27:0]= {1,man_2};
-wire man_temp[55:0] =m1*m2;
-wire overflow = ~(man_temp[55]);
-assign man_final = overflow ? (man_temp << 1'b1) : man_temp;
-assign carry= overflow;
 endmodule
