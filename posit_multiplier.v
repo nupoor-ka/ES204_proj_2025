@@ -67,7 +67,7 @@ begin
 //             product[30-k-3]=es_val[2];
 //             product[30-k-4]=es_val[1];
 //             product[30-k-5]=es_val[0];
-             for(i = 2; i>=5; i=i+1) product[30-k-i] = es_val[5-i];
+             for(i = 2; i<=5; i=i+1) product[30-k-i] = es_val[5-i];
             //product[30-k-2:30-k-5]=es_val[3:0];
             // for(j=30-k-6 ; j>=0; j=j-1) product[j]=man_final[31+j+k];
             man_start = 30-k-6;
@@ -81,7 +81,7 @@ begin
 //            product[30+k-2]=es_val[2];
 //            product[30+k-3]=es_val[1];
 //            product[30+k-4]=es_val[0];
-            for(i = 1; i>=4; i=i+1) product[30+k-i] = es_val[4-i];
+            for(i = 1; i<=4; i=i+1) product[30+k-i] = es_val[4-i];
             
             //product[30+k-1:30+k-4]=es_val[3:0];
             // for(j=30+k-5 ; j>=0; j=j-1) product[j]=man_final[30+j-k];
@@ -133,7 +133,7 @@ module mantissa_extractor(inp, man_length, es, man_val);
 input [31:0]inp;
 output reg man_length, man_val;
 output wire [3:0]es;
-reg len_regime, k_val;
+wire len_regime, k_val;
 k_extractor k_extractor_1(inp, k_val, len_regime);
 wire es_start= 31-1- len_regime;
 wire [3:0]es=inp[es_start: es_start-3];
@@ -144,7 +144,9 @@ endmodule
 
 module k_extractor(inp, k_val, len_regime);
 input [31:0]inp;
-output reg k_val, len_regime;
+output k_val;
+output reg len_regime;
+reg kk;
 reg k_sign;
 reg k_position;
 integer i;
@@ -152,7 +154,7 @@ always@(inp)
 begin
 if (inp==32'b0)
     begin
-    k_val = 0;
+    kk = 0;
     len_regime = 0;
     end
 else
@@ -163,7 +165,7 @@ else
             begin
             if(!inp[i]) k_position <= i;
             end
-        k_val=30-k_position-1;
+        kk=30-k_position-1;
         end
     else
         begin
@@ -171,9 +173,10 @@ else
             begin
             if(inp[i]) k_position <= i;
             end
-        k_val=(k_position-30);
+        kk=(k_position-30);
         end
     len_regime = 31 - k_position;
     end
 end
+assign k_val = kk;
 endmodule
