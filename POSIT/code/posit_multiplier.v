@@ -18,6 +18,9 @@ module posit_multiplier(
     // Extracting regime values from inputs
     k_extractor kext1(.inp(a), .k_val(ka), .len_regime(len_reg_a));
     k_extractor kext2(.inp(b), .k_val(kb), .len_regime(len_reg_b));
+    
+    wire ma_lena = 32-1-4-len_reg_a;
+    wire ma_lenb = 32-1-4-len_reg_b;
 
     // Sum of regimes
     assign k = ka + kb;
@@ -31,9 +34,16 @@ module posit_multiplier(
 
     // Mantissa multiplication
     wire carry_1;
-    wire [55:0] man_final;
+    wire [53:0] man_final;
 
-    mantissa_multiplier multip_man(.man_1(man_val_1), .man_2(man_val_2), .carry(carry_1), .man_final(man_final));
+    // mantissa_multiplier multip_man(.man_1(man_val_1), .man_2(man_val_2), .carry(carry_1), .man_final(man_final));
+    mantissa_mult_variable multip_man(
+        .mantissa_a(man_val_1),
+        .mantissa_b(man_val_2),
+        .sizea(ma_lena),  // Number of valid LSBs in mantissa_a (1-32)
+        .sizeb(ma_lenb),  // Number of valid LSBs in mantissa_b (1-32)
+        .mantissa_out(man_final)
+);
 
     // Exponent addition with carry from mantissa multiplication
     wire [4:0] es_tot = es1 + es2 + carry_1;
@@ -41,7 +51,7 @@ module posit_multiplier(
     wire carry = es_tot[4];
 
     // Final regime value including carry
-    wire signed [5:0] k_final = k + carry;
+    wire signed [5:0] k_final = k + carry;    
 
     integer i;
 
@@ -75,12 +85,13 @@ module posit_multiplier(
                     product[30 - k_final - 2 - i] = es_val[3 - i];
 
                 // Mantissa bits
-                for (i = 0; i < 30 - k_final - 6; i = i + 1)
-                    product[i] = man_final[53 - i];
+                for (i = 0; i <= 30 - k_final - 6; i = i + 1)
+                    if(53-i-num_zeros>=0)
+                    product[30-k_final-6-i] = man_final[53 - i];
             end
             else begin
                 // Negative regime bits
-                for (i = 0; i < -k_final; i = i + 1)
+                for (i = 0; i < (0-k_final); i = i + 1)
                     product[30 - i] = 1'b0;
 
                 product[30 + k_final] = 1'b1;
@@ -90,8 +101,9 @@ module posit_multiplier(
                     product[30 + k_final - 1 - i] = es_val[3 - i];
 
                 // Mantissa bits
-                for (i = 0; i < 30 + k_final - 5; i = i + 1)
-                    product[i] = man_final[53 - i];
+                for (i = 0; i <= 30 + k_final - 5; i = i + 1)
+                if(53-i-num_zeros>=0)
+                    product[30 + k_final - 5-i] = man_final[53 - i];
             end
         end
     end
@@ -112,7 +124,7 @@ module k_extractor(
         k_val = 0;
         found = 0;
 
-        if (inp[30] == 1'b1) begin  // Positive regime val
+        if (inp[30] == 1'b1) begin  // positive regime val
             for (i = 29; i >= 0; i = i - 1) begin
                 if (!found && inp[i] == 1'b0) begin
                     len_regime = 31 - i;
@@ -140,50 +152,58 @@ module mantissa_extractor(
 );
     integer es_start;
     integer mantissa_start;
-    reg [31:0] mask;
-    reg [31:0] masked_bits;
+    integer i;
+    reg [26:0] temp_mantissa;
 
     always @(*) begin
-        es_start = 30 - len_regime; // Starting bit for exponent
-        es = 4'b0;                  // Default values
+        es_start = 30 - len_regime;
+        es = 4'b0;
         man_val = 27'b0;
+        temp_mantissa = 27'b0;
 
-        // Extract exponent bits if valid
+        // Extract exponent
         if (es_start >= 3) begin
-            es = inp[es_start -: 4]; // Safe fixed-width extraction for exponent
+            es = inp[es_start -: 4];
         end else begin
-            es = 4'b0;               // Invalid range, assign zero
+            es = 4'b0;
         end
 
-        // Calculate mantissa start bit
         mantissa_start = es_start - 4;
 
         if (mantissa_start < 0) begin
-            // No bits available for mantissa, assign zero
             man_val = 27'b0;
         end else begin
-            // Generate mask with lower (mantissa_start + 1) bits set to 1
-            mask = (32'h1 << (mantissa_start + 1)) - 1;
-
-            // Mask the input to extract only valid bits for mantissa
-            masked_bits = inp & mask;
-
-            // Shift left to align MSB and pad remaining LSBs with zeros
-            man_val = masked_bits[26:0] << (27 - (mantissa_start + 1));
+            // Extract (mantissa_start + 1) bits from inp[0 to mantissa_start]
+            for (i = 0; i <= mantissa_start && i < 27; i = i + 1) begin
+                temp_mantissa[26 - i] = inp[mantissa_start-i];
+            end
         end
     end
 endmodule
 
-module mantissa_multiplier(
-    input  [26:0] man_1,
-    input  [26:0] man_2,
-    output wire carry,
-    output wire [55:0] man_final
+module mantissa_mult_variable (
+    input  [31:0] mantissa_a,
+    input  [31:0] mantissa_b,
+    input  [5:0]  sizea,  // Number of valid LSBs in mantissa_a (1-32)
+    input  [5:0]  sizeb,  // Number of valid LSBs in mantissa_b (1-32)
+    output [53:0] mantissa_out
 );
-    wire [27:0] m1 = {1'b1, man_1}; 
-    wire [27:0] m2 = {1'b1, man_2};
-    wire [54:0] man_temp = m1 * m2;
+    wire [31:0] mask_a = (32'hFFFFFFFF >> (32 - sizea)); //posit doesn't allow variables inside slicing thing
+wire [31:0] mask_b = (32'hFFFFFFFF >> (32 - sizeb));
 
-    assign carry = ~man_temp[54];
-    assign man_final = carry ? (man_temp << 1'b1) : man_temp;
+wire [31:0] valid_a = mantissa_a & mask_a;
+wire [31:0] valid_b = mantissa_b & mask_b;
+
+wire [32:0] sig_a = {1'b1, valid_a};
+wire [32:0] sig_b = {1'b1, valid_b};
+
+wire [65:0] product = sig_a * sig_b;
+
+wire        product_msb = product[65]; // 1 when product >= 2
+wire [32:0] normalized = product_msb ? product[64:32] : product[63:31];
+
+wire [31:0] result = ~normalized[31:0] + 1'b1;
+
+assign mantissa_out = result;
+
 endmodule
