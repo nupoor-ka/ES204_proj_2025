@@ -19,3 +19,11 @@ def decimal_bin(q):
     s = str(rem) + s
     q = q//2
   return s
+
+e1=bin_decimal(es1)
+e2=bin_decimal(es2)
+y1=float(bin_decimal(mantissa1))/2**23
+y2=float(bin_decimal(mantissa2))/2**23
+sign=(sign1^sign2)
+product=((-1)**sign) * (2**(e1+e2-2*bias)) * (1+ (y1+y2)+ y1*y2)
+print(product)
