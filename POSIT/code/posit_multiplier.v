@@ -41,7 +41,7 @@ module posit_multiplier(
     wire carry = es_tot[4];
 
     // Final regime value including carry
-    wire signed [5:0] k_final = k + carry*4;
+    wire signed [5:0] k_final = k + carry;
 
     integer i;
 
